@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ChatRewind: keep deleted messages, statuses and voice notes</title>
+<meta name="description" content="ChatRewind keeps a copy of the WhatsApp messages that reach your phone, the statuses you have viewed and your voice messages. Free Android app.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%230B7A66'/%3E%3Cpath d='M26 28h48a6 6 0 0 1 6 6v28a6 6 0 0 1-6 6H48L32 82V68h-6a6 6 0 0 1-6-6V34a6 6 0 0 1 6-6z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F4F8F6; --surface:#FFFFFF; --ink:#0F1A17; --muted:#51615B; --line:#D6E1DC;
+  --brand:#0B7A66; --brand-dark:#064E41; --mint:#CDEFE5; --red:#B3261E; --red-bg:#FFE3DF; --warn-bg:#FFF1CC; --warn-ink:#5B4300;
+  --display:'Bricolage Grotesque','Trebuchet MS',system-ui,sans-serif;
+  --body:'Instrument Sans','Segoe UI',system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0C1311; --surface:#141D1A; --ink:#E4EDE9; --muted:#9DB0A8; --line:#25332E; --brand:#4FD8B4; --brand-dark:#4FD8B4; --mint:#0F3A31; --red:#FFB4AB; --red-bg:#4A1A17; --warn-bg:#3A2F0B; --warn-ink:#F2DDA0;}
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.65}
+a{color:var(--brand)}
+:focus-visible{outline:3px solid var(--brand);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:var(--display);line-height:1.12;letter-spacing:-.02em}
+h2{font-size:clamp(1.6rem,4vw,2.2rem);font-weight:800;margin-bottom:12px}
+h3{font-size:1.15rem;font-weight:600}
+p{max-width:62ch}
+
+/* header */
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:1.15rem;color:var(--ink);text-decoration:none}
+.brand svg{width:34px;height:34px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--brand);color:#fff;font-weight:600;text-decoration:none;border-radius:14px;padding:14px 26px;font-size:1.05rem;transition:transform .15s,background .15s}
+@media (prefers-color-scheme:dark){.btn{color:#00382D}}
+.btn:hover{transform:translateY(-2px);background:var(--brand-dark)}
+@media (prefers-color-scheme:dark){.btn:hover{background:#7BE8CB}}
+.btn.small{padding:8px 16px;font-size:.95rem;border-radius:10px}
+.btn.ghost{background:transparent;color:var(--brand);border:2px solid var(--brand)}
+.btn.ghost:hover{background:var(--mint)}
+
+/* hero */
+.hero{padding:56px 0 40px}
+.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+.hero h1{font-size:clamp(2.2rem,6vw,3.6rem);font-weight:800;margin-bottom:18px}
+.hero p.lead{font-size:1.15rem;color:var(--muted);margin-bottom:26px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.meta{font-size:.92rem;color:var(--muted)}
+#notAndroid{display:none;background:var(--warn-bg);color:var(--warn-ink);padding:12px 16px;border-radius:12px;margin-bottom:16px;font-size:.95rem}
+
+/* hero visual: before/after */
+.stage{display:grid;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px}
+.panel h3{font-family:var(--body);font-size:.85rem;font-weight:600;color:var(--muted);margin-bottom:10px}
+.msg{display:flex;gap:10px;align-items:flex-start}
+.av{flex:none;width:36px;height:36px;border-radius:50%;background:#3F6FD1;color:#fff;display:grid;place-items:center;font-weight:600}
+.bub{border-radius:4px 16px 16px 16px;padding:10px 14px;font-size:.98rem;background:var(--bg);width:100%}
+.bub b{display:block;font-size:.85rem;color:var(--brand)}
+.bub.gone{font-style:italic;color:var(--muted)}
+.bub.kept{background:var(--red-bg);color:var(--ink)}
+.tag{display:block;margin-top:6px;font-size:.8rem;font-weight:600;color:var(--red)}
+.panel.ours{border:2px solid var(--brand);transform:translateX(18px)}
+
+/* sections */
+section{padding:56px 0}
+section.alt{background:var(--surface);border-block:1px solid var(--line)}
+.lead2{color:var(--muted);margin-bottom:28px}
+.rows{border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:56px 1fr;gap:18px;padding:22px 0;border-bottom:1px solid var(--line)}
+.row .ic{font-size:1.9rem;line-height:1}
+.row p{color:var(--muted);margin-top:4px}
+
+/* steps */
+ol.steps{list-style:none;padding:0;display:grid;gap:16px;counter-reset:s;max-width:760px}
+ol.steps li{counter-increment:s;position:relative;padding-left:56px}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:38px;height:38px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:800}
+@media (prefers-color-scheme:dark){ol.steps li::before{color:#00382D}}
+ol.steps strong{display:block;font-family:var(--display);font-size:1.1rem}
+ol.steps span{color:var(--muted)}
+.note{margin-top:22px;max-width:760px;background:var(--warn-bg);color:var(--warn-ink);border-radius:14px;padding:14px 18px;font-size:.96rem}
+
+/* permissions + limits */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+dl dt{font-weight:600;margin-top:16px}
+dl dd{color:var(--muted)}
+ul.limits{padding-left:20px;color:var(--muted)}
+ul.limits li{margin-bottom:8px}
+
+/* faq */
+details{border-bottom:1px solid var(--line);padding:16px 0;max-width:760px}
+details:first-of-type{border-top:1px solid var(--line)}
+summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:12px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:1.4rem;line-height:1;color:var(--brand);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{margin-top:10px;color:var(--muted)}
+
+.final{text-align:center}
+.final p{margin:0 auto 22px;color:var(--muted)}
+footer{padding:32px 0 48px;color:var(--muted);font-size:.88rem;border-top:1px solid var(--line)}
+footer p{max-width:80ch}
+
+@media (max-width:820px){
+  .hero .wrap,.two{grid-template-columns:1fr}
+  .panel.ours{transform:none}
+  .hero{padding-top:32px}
+  header .btn.small{display:none}
+  .row{grid-template-columns:44px 1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="ChatRewind home">
+      <svg viewBox="20 20 68 68" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#12A887"/><stop offset="1" stop-color="#064E41"/></linearGradient></defs><rect x="20" y="20" width="68" height="68" rx="17" fill="url(#g)"/><path fill="#fff" d="M40,32H68A8,8 0 0 1 76,40V58A8,8 0 0 1 68,66H50L38,76V66H40A8,8 0 0 1 32,58V40A8,8 0 0 1 40,32Z"/><path fill="none" stroke="#0B7A66" stroke-width="3" stroke-linecap="round" d="M54,41A8,8 0 1 1 46,49"/><path fill="#0B7A66" d="M41.5,50.5H50.5L46,43.5Z"/><path fill="none" stroke="#0B7A66" stroke-width="2.4" stroke-linecap="round" d="M54,49V45M54,49L57,51"/></svg>
+      ChatRewind
+    </a>
+    <a class="btn small" href="https://github.com/coding-world197/MsgSaver-apk/actions/runs/44338542067/artifacts/14441973873" download>Download APK</a>
+  </div>
+</header>
+
+<main id="top">
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <div id="notAndroid">This app is for Android phones only. Open this page in your Android phone’s browser to download it.</div>
+      <h1>A deleted message is still yours to read</h1>
+      <p class="lead">ChatRewind keeps a copy of the WhatsApp messages that reach your phone, the statuses you have viewed and your voice messages. Even if the sender deletes them, you can still read and listen.</p>
+      <div class="cta">
+        <a class="btn" href="https://github.com/coding-world197/MsgSaver-apk/actions/runs/44338542067/artifacts/14441973873" download>Download APK</a>
+        <a class="btn ghost" href="#install">How to install</a>
+      </div>
+      <p class="meta">Free. Android 10 or newer. Your data stays on your phone.</p>
+    </div>
+    <div class="stage" aria-label="Difference between WhatsApp and ChatRewind">
+      <div class="panel">
+        <h3>What WhatsApp shows now</h3>
+        <div class="msg"><div class="av">A</div><div class="bub gone">🚫 This message was deleted</div></div>
+      </div>
+      <div class="panel ours">
+        <h3>What ChatRewind shows</h3>
+        <div class="msg"><div class="av">A</div><div class="bub kept"><b>Ali</b>Come to the office at 5 tomorrow, we have a meeting.<span class="tag">🗑 The sender deleted this message</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="alt" id="features">
+  <div class="wrap">
+    <h2>What the app does</h2>
+    <p class="lead2">Three jobs in one app. It also has search and dark mode, and it works with WhatsApp Business too.</p>
+    <div class="rows">
+      <div class="row"><div class="ic">💬</div><div><h3>Deleted messages</h3><p>A copy of each message is saved the moment it arrives. If the sender uses “Delete for everyone”, the original text still appears, marked in red. Search by name or text.</p></div></div>
+      <div class="row"><div class="ic">🖼</div><div><h3>Statuses</h3><p>Statuses you view in WhatsApp show up in the app. They stay after 24 hours, or after the sender removes them. Save one to your gallery with a single tap, or remove it from the app.</p></div></div>
+      <div class="row"><div class="ic">🎤</div><div><h3>Voice messages</h3><p>Play new voice messages inside the app. The file stays with you even if the sender deletes it.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>How to install</h2>
+    <p class="lead2">The app is not on the Play Store, so installing takes a few extra steps. It takes about five minutes.</p>
+    <ol class="steps">
+      <li><strong>Download the APK</strong><span>Use the button above to download the file. It is about 25 MB.</span></li>
+      <li><strong>Open the file and tap Install</strong><span>If you see “Install blocked”, tap <b>Settings</b> and turn on <b>Allow from this source</b> for the app you opened it with (Chrome or Files). Then go back and tap Install.</span></li>
+      <li><strong>If Play Protect stops it</strong><span>Open the Play Store, tap your profile photo, go to <b>Play Protect</b> > settings and turn off <b>Scan apps with Play Protect</b>. Turn it back on after installing. Google warns about this because the app asks for permission to read notifications.</span></li>
+      <li><strong>Open the app and finish the 3-step setup</strong><span>The app guides you: permission to read messages, files access, and permission to run in the background. Each button opens the right Settings page. Switch it on and come back.</span></li>
+      <li><strong>You’re done</strong><span>New messages are now saved as they arrive. For statuses, view the status in WhatsApp first, then tap Refresh on the app’s Status tab.</span></li>
+    </ol>
+    <div class="note"><b>If you see “App was denied access”:</b> open phone Settings > Apps > ChatRewind, tap the three dots (⋮) at the top right, choose <b>Allow restricted settings</b>, then go back to the app and turn on notification access. Android 13 and newer show this after a fresh install.</div>
+  </div>
+</section>
+
+<section class="alt" id="privacy">
+  <div class="wrap two">
+    <div>
+      <h2>Which permissions, and why</h2>
+      <dl>
+        <dt>Notification access</dt><dd>To read message text from WhatsApp notifications. This is how deleted messages are saved.</dd>
+        <dt>All files access</dt><dd>To find WhatsApp’s status and voice files. Copies are made only from WhatsApp’s media folder.</dd>
+        <dt>Battery: unrestricted</dt><dd>So your phone does not shut the app down in the background and miss new messages.</dd>
+        <dt>Internet</dt><dd>Used only to check whether a new version is available. Your messages are never sent anywhere.</dd>
+      </dl>
+    </div>
+    <div>
+      <h2>Know the limits</h2>
+      <ul class="limits">
+        <li>Only messages that triggered a notification are saved. If the chat is open, muted or locked, a message can be missed.</li>
+        <li>Statuses appear only if you have viewed them yourself.</li>
+        <li>Very long messages, photos and videos do not come through fully in notifications.</li>
+        <li>Android only. It is not possible on iPhone.</li>
+        <li>WhatsApp updates can change how things work. When that happens, the app gets an update.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <h2>Frequently asked questions</h2>
+    <details><summary>Is this like GB WhatsApp?</summary><p>No. It is a separate app and does not modify WhatsApp. You keep using the official WhatsApp. Still, we are not connected to WhatsApp, and we cannot guarantee anything if its policies change.</p></details>
+    <details><summary>Where does my data go?</summary><p>Messages, statuses and voice messages stay on your phone. The internet is used only to check for updates. You can delete everything from the app’s Settings with one tap.</p></details>
+    <details><summary>Why does Play Protect show a warning?</summary><p>The app asks for notification access, and Google blocks such apps when they are installed from outside the Play Store. The install steps above explain how to get past it.</p></details>
+    <details><summary>How do I get updates?</summary><p>When a new version is out, the app shows a popup when you open it. Tap Download, then tap the file to install. Your existing data stays safe.</p></details>
+    <details><summary>Will it show old messages?</summary><p>No. Only messages that arrive after you install the app are saved.</p></details>
+    <details><summary>Does it work on iPhone?</summary><p>No. iPhone does not let third-party apps read notifications.</p></details>
+  </div>
+</section>
+
+<section class="alt final">
+  <div class="wrap">
+    <h2>Download it now</h2>
+    <p>It’s free. The install steps are above.</p>
+    <a class="btn" href="https://github.com/coding-world197/MSG-server/releases/latest/download/ChatRewind.apk" download>Download APK</a>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>ChatRewind is not affiliated with WhatsApp Inc. or Meta. WhatsApp is their trademark. Use the app only on your own phone, and respect other people’s privacy.</p>
+  </div>
+</footer>
+
+<script>
+  if (!/Android/i.test(navigator.userAgent)) {
+    document.getElementById('notAndroid').style.display = 'block';
+  }
+</script>
+</body>
+</html>
